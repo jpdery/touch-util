@@ -110,7 +110,8 @@
     },
     "2": function(require, module, exports, global) {
         "use strict";
-        var defineCustomEvent = require("3");
+        var map = require("3")();
+        var defineCustomEvent = require("4");
         var onDispatch = function(custom, data) {
             custom.view = data.view;
             custom.touches = data.touches;
@@ -131,7 +132,7 @@
         };
         var outside = function(x, y, node) {
             var element = document.elementFromPoint(x, y);
-            if (element) return !is(node, elment);
+            if (element) return !is(node, element);
             return true;
         };
         var append = function(parent, object) {
@@ -188,141 +189,63 @@
                 return outside(touch.pageX, touch.pageY, this);
             }
         }));
+        var attach = function(name, func) {
+            return function() {
+                this.addEventListener(name, func);
+            };
+        };
+        var detach = function(name, func) {
+            return function() {
+                this.removeEventListener(name, func);
+            };
+        };
+        var storage = function(element, touch) {
+            var data = map.get(element);
+            if (!data) map.set(element, data = {});
+            return data;
+        };
+        var enters = function(element, touch) {
+            var data = storage(element);
+            var name = touch.identifier;
+            if (data[name] === undefined || data[name] === "out") {
+                data[name] = "in";
+                return true;
+            }
+            return false;
+        };
+        var leaves = function(element, touch) {
+            var data = storage(element);
+            var name = touch.identifier;
+            if (data[name] === undefined || data[name] === "in") {
+                data[name] = "out";
+                return true;
+            }
+            return false;
+        };
+        var enter = function(e) {
+            this.dispatchEvent("tapenter", e);
+        };
+        var leave = function(e) {
+            this.dispatchEvent("tapleave", e);
+        };
         defineCustomEvent("tapenter", append(custom, {
             base: "tapinside",
             condition: function(e) {
-                return true;
-            }
+                return enters(this, e.targetTouches[0]);
+            },
+            onAdd: attach("tapstart", enter),
+            onRemove: detach("tapstart", enter)
+        }));
+        defineCustomEvent("tapleave", append(custom, {
+            base: "tapoutside",
+            condition: function(e) {
+                return leaves(this, e.targetTouches[0]);
+            },
+            onAdd: attach("tapend", leave),
+            onRemove: detach("tapend", leave)
         }));
     },
     "3": function(require, module, exports, global) {
-        "use strict";
-        var storage = require("4").createStorage();
-        var customs = {};
-        var dispatchEvent = Element.prototype.dispatchEvent;
-        var addEventListener = Element.prototype.addEventListener;
-        var removeEventListener = Element.prototype.removeEventListener;
-        Element.prototype.dispatchEvent = function(event, data) {
-            var custom = customs[event];
-            if (custom) {
-                var name = event;
-                event = document.createEvent("CustomEvent");
-                event.initCustomEvent(name, custom.bubbleable, custom.cancelable);
-                custom.onDispatch.call(this, event, data || {});
-            }
-            return dispatchEvent.call(this, event);
-        };
-        Element.prototype.addEventListener = function(type, listener, capture) {
-            var custom = customs[type];
-            if (custom) {
-                custom.onAdd.call(this);
-                listener = validate(this, type, listener);
-                var name = root(custom);
-                if (name) addEventListener.call(this, name, dispatch(this, type, listener), capture);
-            }
-            return addEventListener.call(this, type, listener, capture);
-        };
-        Element.prototype.removeEventListener = function(type, listener, capture) {
-            var custom = customs[type];
-            if (custom) {
-                custom.onRemove.call(this);
-                listener = validate(this, type, listener);
-                var name = root(custom);
-                if (name) removeEventListener.call(this, name, dispatch(this, type, listener), capture);
-                detach(this, type, listener);
-            }
-            return removeEventListener.call(this, type, listener, capture);
-        };
-        var defineCustomEvent = function(name, custom) {
-            custom.base = "base" in custom ? custom.base : null;
-            custom.condition = "condition" in custom ? custom.condition : true;
-            custom.bubbleable = "bubbleable" in custom ? custom.bubbleable : true;
-            custom.cancelable = "cancelable" in custom ? custom.cancelable : true;
-            custom.onAdd = custom.onAdd || function() {};
-            custom.onRemove = custom.onRemove || function() {};
-            custom.onDispatch = custom.onDispatch || function() {};
-            var base = customs[custom.base];
-            customs[name] = base ? {
-                base: base.base,
-                condition: custom.condition,
-                bubbleable: custom.bubbleable,
-                cancelable: custom.cancelable,
-                onAdd: inherit(custom, base, "onAdd"),
-                onRemove: inherit(custom, base, "onRemove"),
-                onDispatch: inherit(custom, base, "onDispatch")
-            } : custom;
-        };
-        var inherit = function(custom, base, method) {
-            return function() {
-                base[method].apply(this, arguments);
-                custom[method].apply(this, arguments);
-            };
-        };
-        var root = function(custom) {
-            var base = custom.base;
-            if (base === null) return null;
-            var parent = customs[base];
-            if (parent) return root(parent);
-            return base;
-        };
-        var passes = function(element, custom, e) {
-            var condition = custom.condition;
-            var succeeded = condition;
-            if (typeof condition === "function") succeeded = condition.call(element, e);
-            var base = customs[custom.base];
-            if (base) return succeeded && passes(element, base, e);
-            return succeeded;
-        };
-        var handler = function(element, type, listener) {
-            var events = storage(element);
-            if (events[type] === undefined) {
-                events[type] = [];
-            }
-            events = events[type];
-            for (var i = 0, l = events.length; i < l; i++) {
-                var event = events[i];
-                if (event.listener === listener) return event;
-            }
-            event = events[events.length] = {
-                dispatch: null,
-                validate: null,
-                listener: listener
-            };
-            return event;
-        };
-        var detach = function(element, type, listener) {
-            var events = storage(element);
-            if (events[type] === undefined) return;
-            events = events[type];
-            for (var i = 0, l = events.length; i < l; i++) {
-                var event = events[i];
-                if (event.listener === listener) {
-                    events.splice(i, 1);
-                }
-            }
-            return event;
-        };
-        var dispatch = function(element, type, listener) {
-            var event = handler(element, type, listener);
-            if (event.dispatch === null) {
-                event.dispatch = function(e) {
-                    if (passes(element, customs[type], e)) element.dispatchEvent(type, e);
-                };
-            }
-            return event.dispatch;
-        };
-        var validate = function(element, type, listener) {
-            var event = handler(element, type, listener);
-            if (event.validate === null) {
-                event.validate = function(e) {
-                    if (e instanceof CustomEvent) listener.call(this, e);
-                };
-            }
-            return event.validate;
-        };
-        module.exports = global.defineCustomEvent = defineCustomEvent;
-    },
-    "4": function(require, module, exports, global) {
         void function(global, undefined_, undefined) {
             var getProps = Object.getOwnPropertyNames, defProp = Object.defineProperty, toSource = Function.prototype.toString, create = Object.create, hasOwn = Object.prototype.hasOwnProperty, funcName = /^\n?function\s?(\w*)?_?\(/;
             function define(object, key, value) {
@@ -487,5 +410,135 @@
             WM.createStorage = createStorage;
             if (global.WeakMap) global.WeakMap.createStorage = createStorage;
         }((0, eval)("this"));
+    },
+    "4": function(require, module, exports, global) {
+        "use strict";
+        var storage = require("3").createStorage();
+        var customs = {};
+        var dispatchEvent = Element.prototype.dispatchEvent;
+        var addEventListener = Element.prototype.addEventListener;
+        var removeEventListener = Element.prototype.removeEventListener;
+        Element.prototype.dispatchEvent = function(event, data) {
+            var custom = customs[event];
+            if (custom) {
+                data = data || {};
+                if (fail(custom.condition, this, data)) return;
+                var name = event;
+                event = document.createEvent("CustomEvent");
+                event.initCustomEvent(name, custom.bubbleable, custom.cancelable);
+                custom.onDispatch.call(this, event, data);
+            }
+            return dispatchEvent.call(this, event);
+        };
+        Element.prototype.addEventListener = function(type, listener, capture) {
+            var custom = customs[type];
+            if (custom) {
+                custom.onAdd.call(this);
+                listener = validate(this, type, listener);
+                var name = root(custom);
+                if (name) addEventListener.call(this, name, dispatch(this, type, listener), capture);
+            }
+            return addEventListener.call(this, type, listener, capture);
+        };
+        Element.prototype.removeEventListener = function(type, listener, capture) {
+            var custom = customs[type];
+            if (custom) {
+                custom.onRemove.call(this);
+                listener = validate(this, type, listener);
+                var name = root(custom);
+                if (name) removeEventListener.call(this, name, dispatch(this, type, listener), capture);
+                detach(this, type, listener);
+            }
+            return removeEventListener.call(this, type, listener, capture);
+        };
+        var defineCustomEvent = function(name, custom) {
+            custom.base = "base" in custom ? custom.base : null;
+            custom.condition = "condition" in custom ? custom.condition : true;
+            custom.bubbleable = "bubbleable" in custom ? custom.bubbleable : true;
+            custom.cancelable = "cancelable" in custom ? custom.cancelable : true;
+            custom.onAdd = custom.onAdd || function() {};
+            custom.onRemove = custom.onRemove || function() {};
+            custom.onDispatch = custom.onDispatch || function() {};
+            var base = customs[custom.base];
+            var condition = function(e) {
+                return pass(base.condition, this, e) && pass(custom.condition, this, e);
+            };
+            customs[name] = base ? {
+                base: base.base,
+                bubbleable: custom.bubbleable,
+                cancelable: custom.cancelable,
+                condition: condition,
+                onAdd: inherit(custom, base, "onAdd"),
+                onRemove: inherit(custom, base, "onRemove"),
+                onDispatch: inherit(custom, base, "onDispatch")
+            } : custom;
+        };
+        var inherit = function(custom, base, method) {
+            return function() {
+                base[method].apply(this, arguments);
+                custom[method].apply(this, arguments);
+            };
+        };
+        var root = function(custom) {
+            var base = custom.base;
+            if (base === null) return null;
+            var parent = customs[base];
+            if (parent) return root(parent);
+            return base;
+        };
+        var pass = function(condition, element, e) {
+            return typeof condition === "function" ? condition.call(element, e) : condition;
+        };
+        var fail = function(condition, element, e) {
+            return !pass(condition, element, e);
+        };
+        var handler = function(element, type, listener) {
+            var events = storage(element);
+            if (events[type] === undefined) {
+                events[type] = [];
+            }
+            events = events[type];
+            for (var i = 0, l = events.length; i < l; i++) {
+                var event = events[i];
+                if (event.listener === listener) return event;
+            }
+            event = events[events.length] = {
+                dispatch: null,
+                validate: null,
+                listener: listener
+            };
+            return event;
+        };
+        var detach = function(element, type, listener) {
+            var events = storage(element);
+            if (events[type] === undefined) return;
+            events = events[type];
+            for (var i = 0, l = events.length; i < l; i++) {
+                var event = events[i];
+                if (event.listener === listener) {
+                    events.splice(i, 1);
+                }
+            }
+            return event;
+        };
+        var dispatch = function(element, type, listener) {
+            var event = handler(element, type, listener);
+            if (event.dispatch === null) {
+                event.dispatch = function(e) {
+                    element.dispatchEvent(type, e);
+                };
+            }
+            return event.dispatch;
+        };
+        var validate = function(element, type, listener) {
+            var event = handler(element, type, listener);
+            if (event.validate === null) {
+                event.validate = function(e) {
+                    if (e instanceof CustomEvent) listener.call(this, e);
+                };
+            }
+            return event.validate;
+        };
+        module.exports = global.defineCustomEvent = defineCustomEvent;
     }
 });
