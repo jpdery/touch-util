@@ -12,7 +12,8 @@
 		"url": "https://github.com/jpdery/touch-util.git"
 	},
 	"dependencies": {
-		"event-util": "git://github.com/jpdery/event-util.git"
+		"event-util": "git://github.com/jpdery/event-util.git",
+		"weakmap": "0.0.6"
 	},
 	"devDependencies": {
 	},
