@@ -1,0 +1,73 @@
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+</head>
+<body>
+
+	<script type="text/javascript" src="touch-util.js"></script>
+	<script>
+
+		document.addEventListener('DOMContentLoaded', function() {
+
+			console.log('Ready');
+
+			var $ = document.getElementById.bind(document)
+
+			var element = $('hit');
+
+			// element.addEventListener('touchstart', function(e) {
+			// 	console.log('Touch Start ->', e)
+			// })
+
+			// element.addEventListener('touchmove', function(e) {
+			// 	console.log('Touch Move ->', e)
+			// })
+
+			// element.addEventListener('touchend', function(e) {
+			// 	console.log('Touch End ->', e)
+			// })
+
+			// --------------
+
+			// element.addEventListener('tapstart', function(e) {
+			// 	console.log('Tap Start')
+			// })
+
+			// element.addEventListener('tapmove', function(e) {
+			// 	console.log('Tap Move')
+			// })
+
+			element.addEventListener('tapend', function(e) {
+				console.log('Tap End')
+			})
+
+			element.addEventListener('tap', function(e) {
+				console.log('Tap')
+			})
+
+			// element.addEventListener('tapinside', function(e) {
+			// 	console.log('Tap Inside')
+			// })
+
+			// element.addEventListener('tapouside', function(e) {
+			// 	console.log('Tap Inside')
+			// })
+
+		});
+
+	</script>
+
+	<style>
+
+		#hit {
+			background: rgba(255, 0, 0, 0.5);
+			height: 200px;
+			width: 200px;
+		}
+
+	</style>
+
+	<div id="hit"></div>
+
+</body>
+</html>

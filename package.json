@@ -1,0 +1,22 @@
+{
+	"name": "touch-util",
+	"description": "Utilities to handle touch events.",
+	"version": "0.0.1",
+	"main": "lib/index.js",
+	"license": "MIT",
+	"keywords": ["touch", "touch-events"],
+	"author": "Jean-Philippe Dery <jeanphilippe.dery@gmail.com>",
+	"bugs": "https://github.com/jpdery/touch-util/issues",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jpdery/touch-util.git"
+	},
+	"dependencies": {
+		"event-util": "git://github.com/jpdery/event-util.git"
+	},
+	"devDependencies": {
+	},
+	"engines": {
+		"node": "*"
+	}
+}
