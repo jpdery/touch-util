@@ -141,6 +141,45 @@
             for (var k in object) merge[k] = object[k];
             return merge;
         };
+        var attach = function(name, func) {
+            return function() {
+                this.addEventListener(name, func);
+            };
+        };
+        var detach = function(name, func) {
+            return function() {
+                this.removeEventListener(name, func);
+            };
+        };
+        var storage = function(element, touch) {
+            var data = map.get(element);
+            if (!data) map.set(element, data = {});
+            return data;
+        };
+        var enters = function(element, touch) {
+            var data = storage(element);
+            var name = touch.identifier;
+            if (data[name] === undefined || data[name] === "out") {
+                data[name] = "in";
+                return true;
+            }
+            return false;
+        };
+        var leaves = function(element, touch) {
+            var data = storage(element);
+            var name = touch.identifier;
+            if (data[name] === undefined || data[name] === "in") {
+                data[name] = "out";
+                return true;
+            }
+            return false;
+        };
+        var enter = function(e) {
+            this.dispatchEvent("tapenter", e);
+        };
+        var leave = function(e) {
+            this.dispatchEvent("tapleave", e);
+        };
         var custom = {
             onDispatch: onDispatch
         };
@@ -189,45 +228,6 @@
                 return outside(touch.pageX, touch.pageY, this);
             }
         }));
-        var attach = function(name, func) {
-            return function() {
-                this.addEventListener(name, func);
-            };
-        };
-        var detach = function(name, func) {
-            return function() {
-                this.removeEventListener(name, func);
-            };
-        };
-        var storage = function(element, touch) {
-            var data = map.get(element);
-            if (!data) map.set(element, data = {});
-            return data;
-        };
-        var enters = function(element, touch) {
-            var data = storage(element);
-            var name = touch.identifier;
-            if (data[name] === undefined || data[name] === "out") {
-                data[name] = "in";
-                return true;
-            }
-            return false;
-        };
-        var leaves = function(element, touch) {
-            var data = storage(element);
-            var name = touch.identifier;
-            if (data[name] === undefined || data[name] === "in") {
-                data[name] = "out";
-                return true;
-            }
-            return false;
-        };
-        var enter = function(e) {
-            this.dispatchEvent("tapenter", e);
-        };
-        var leave = function(e) {
-            this.dispatchEvent("tapleave", e);
-        };
         defineCustomEvent("tapenter", append(custom, {
             base: "tapinside",
             condition: function(e) {
